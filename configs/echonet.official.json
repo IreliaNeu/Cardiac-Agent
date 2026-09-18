@@ -1,0 +1,8 @@
+{
+  "checkpoint": "../models/deeplabv3_resnet50_random.pt",
+  "mean": [31.834011, 31.95879, 32.082172],
+  "std": [48.866325, 49.137333, 49.361984],
+  "device": "cuda",
+  "normalization_source": "https://github.com/echonet/strain/blob/main/Segmentation%20Analysis/Vid_to_Strain.py#L615",
+  "checkpoint_source": "https://github.com/echonet/dynamic/releases/download/v1.0.0/deeplabv3_resnet50_random.pt"
+}

@@ -1,0 +1,11 @@
+name: cardiac-agent-gpu
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - torch==2.8.0
+      - torchvision==0.23.0
+      - opencv-python-headless==5.0.0.93
+      - -e .[dev,medical_io]

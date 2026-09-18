@@ -1,0 +1,15 @@
+{
+  "study_id": "example-study",
+  "patient_id": "example-patient",
+  "view": "A4C",
+  "ed_image": "../data/example/ed.png",
+  "es_image": "../data/example/es.png",
+  "ed_mask": "../data/example/ed_mask.png",
+  "es_mask": "../data/example/es_mask.png",
+  "mask_source": "predicted",
+  "foreground_label": 1,
+  "phase_source": "dataset",
+  "synthetic": false,
+  "spacing_mm": null,
+  "rwma_label": null
+}

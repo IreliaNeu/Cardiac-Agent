@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+data/
+runs/
+models/
+vendor/
+*.pt
+*.pth
+*.safetensors
+*.tar.gz
+*.bundle
+backups/

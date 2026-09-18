@@ -1,0 +1,6 @@
+{
+  "checkpoint": "../models/deeplabv3_resnet50_random.pt",
+  "mean": [],
+  "std": [],
+  "device": "cpu"
+}
