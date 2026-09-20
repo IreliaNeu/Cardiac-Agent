@@ -53,7 +53,9 @@ def test_acceptance_offline_success_and_no_overwrite(tmp_path):
 def test_requested_qwen_fallback_fails_acceptance(tmp_path):
     class FailingClient:
         model = "test"
-        telemetry = {}
+
+        def __init__(self):
+            self.telemetry = {}
 
         def organize(self, claims):
             raise RuntimeError("missing_api_key")
