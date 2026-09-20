@@ -104,7 +104,10 @@ def test_qwen_success_and_no_images(packet, monkeypatch):
         data = json.loads(request.content)
         assert request.headers["Authorization"] == "Bearer test-not-real"
         claims = json.loads(data["messages"][1]["content"])
-        assert len(claims) == 5 and "image_url" not in request.content.decode()
+        assert len(claims) == 9 and "image_url" not in request.content.decode()
+        assert packet.study_id not in request.content.decode()
+        assert {c["evidence_id"] for c in claims} >= {
+            "deformation_method", "deformation_mean", "deformation_var", "deformation_unit"}
         return httpx.Response(200, json={"choices": [{"message": {
             "content": json.dumps({"claims": list(reversed(claims))})}}]})
     result = explain(packet, QwenClient(httpx.MockTransport(respond)))

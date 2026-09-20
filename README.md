@@ -47,8 +47,25 @@ Default API: SiliconFlow, `Qwen/Qwen3-30B-A3B-Instruct-2507`. Set
 `CARDIAC_BASE_URL`, `CARDIAC_QWEN_MODEL`, and `CARDIAC_API_KEY_ENV` to switch provider.
 No raw images or patient identifiers are sent to the explanation API.
 
-Only five facts are sent: ED area, ES area, FAC, area ratio and RWMA availability.
-The current API explanation does not yet incorporate deformation statistics.
+Evidence includes ED area, ES area, FAC, area ratio, RWMA availability and the
+difference/motion method. When available, map mean, variance and units are included;
+a configured predictor's class and probability are included only for actual predictions.
+No clinical thresholds or diagnostic interpretation are inferred from these statistics.
+
+Minimal offline acceptance (fresh output directory required):
+
+```bash
+python -m cardiac_agent.smoke --output runs/smoke-001
+python -m cardiac_agent.smoke --study data/case-4CH/study.json --output runs/smoke-real
+# Require successful Qwen reporting rather than accepting a template fallback:
+python -m cardiac_agent.smoke --study data/case-4CH/study.json \
+  --output runs/smoke-api --qwen --env .env --deformation farneback
+```
+
+The command writes `acceptance.json`, checks output and source hashes, verifies
+arithmetic, and returns nonzero if explicitly requested Qwen reporting fails.
+Passing this engineering check does not require a trained RWMA classifier.
+See the [clinical collaboration checklist](docs/CLINICAL_CONFIRMATIONS.zh-CN.md).
 
 The first Qwen adapter performs constrained evidence ordering. The model returns
 JSON claims with exact evidence IDs and values; deterministic realization produces

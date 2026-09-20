@@ -11,3 +11,4 @@ jobs:
       - run: pip install -e '.[dev,medical_io,flow]'
       - run: pytest -q
       - run: ruff check src tests scripts
+      - run: python -m cardiac_agent.smoke --output runs/ci-smoke

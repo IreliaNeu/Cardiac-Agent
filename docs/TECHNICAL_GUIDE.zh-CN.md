@@ -1,6 +1,6 @@
 # Cardiac-Agent 技术文档
 
-更新日期：2026-09-18。项目为独立心超研究系统，GitHub 目标为 `IreliaNeu/Cardiac-Agent`。
+更新日期：2026-09-20。项目为独立心超研究系统，GitHub 为 `IreliaNeu/Cardiac-Agent`。
 代码不依赖 RS-Agent 或 Lagent；复用了模块化、证据传递和评估记录的设计经验。
 
 ## 1. 整体目标和当前定位
@@ -86,13 +86,14 @@ RWMA 目前使用 UnavailableRWMA。无模型时不产生概率；出现阻断 Q
 KnowledgePacket 保存 mask 来源、相位来源、指标、RWMA 状态、输入/产物引用与哈希、QC、
 方法限制。服务器数据集的医学指标已获得用户授权，可调用千问 API，无需逐次确认。
 
-当前请求只传五项：area_ed_px、area_es_px、fac_percent、area_ratio、rwma_status。
+当前请求包含 area_ed_px、area_es_px、fac_percent、area_ratio、rwma_status 和 deformation_method。
+有差异图时附带 deformation_mean/var/unit；有实际预测时附带 rwma_label/probability。
 Qwen 返回证据 ID→数值字符串映射或 claims 列表。系统检查字段集合、条目数及数值完全一致，
 再按模板生成报告。接口失败、非法 JSON 或数值改动触发 template_fallback，并记录原因。
 HTTP 429/部分 5xx 和网络异常最多三次尝试；日志不保存密钥或服务端原始错误正文。
 每次请求独立保存尝试次数、HTTP 状态、延迟、tokens，避免批量复用旧遥测。
 
-当前解释没有使用光流统计，尚未达到 Overview 的完整临床语义解释。该缺口需通过临床定义、
+光流统计已接入解释证据契约，新增契约待服务器上的真实 API 复验，尚未达到 Overview 的完整临床语义解释。该缺口需通过临床定义、
 校验规则及医生评价补齐，而不是简单让 LLM 根据 FAC 下结论。
 
 QA 目前回答面积是否减小、RWMA 是否可判断、FAC 是否等于 LVEF，并检查算术一致性。
@@ -181,7 +182,7 @@ evaluation、run 和 checksums。异常保存 failure.json。原子 JSON 写入�
 | ROI | 人工/预训练网络路径完成小样本验证 | 扩大验证、形态质控、域适应、A2C 单独验证 |
 | Function | FAC/ratio/差异图/光流接口 | 时序和轮廓运动、对应关系质控、鲁棒特征 |
 | RWMA | 契约及未就绪状态完成 | 独立标注、分类器训练、患者级评估与校准 |
-| Explanation | API 事实排序与严格核验 | 加入 D/Y 证据、临床语言与医生盲评 |
+| Explanation | API 事实排序与严格核验，D/Y 契约已扩展 | 新契约在线复验、临床语言与医生盲评 |
 | QA | 三项确定性问答 | 临床问题集、用户问答、区分功能异常与 RWMA |
 | Knowledge Bridge | 数据结构、引用与哈希完成 | 版本迁移、可移植审计与重放 |
 | Demo | 待实现 | 导入、双帧显示、mask 对照、数值与证据问答 |
