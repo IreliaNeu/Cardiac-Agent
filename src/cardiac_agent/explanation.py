@@ -51,19 +51,23 @@ class QwenClient:
         self.telemetry = {}
 
     def organize(self, claims: list[Claim]) -> str:
+        return self.complete(
+            "Organize these verified cardiac findings into a logical reporting order. "
+            "Return ONLY an ordered JSON object mapping every evidence_id to its value. "
+            "Preserve all keys and value strings exactly. Do not add diagnoses, "
+            "measurements, commentary, markdown, or other keys.",
+            [c.model_dump() for c in claims], max_tokens=600)
+
+    def complete(self, system: str, context, max_tokens: int = 1800) -> str:
         self.telemetry = {}
         if not self.key:
             raise RuntimeError("missing_api_key")
         started = time.monotonic()
         payload = {
-            "model": self.model, "temperature": 0, "max_tokens": 600,
+            "model": self.model, "temperature": 0, "max_tokens": max_tokens,
             "messages": [
-                {"role": "system", "content": (
-                    "Organize these verified cardiac findings into a logical reporting order. "
-                    "Return ONLY an ordered JSON object mapping every evidence_id to its value. "
-                    "Preserve all keys and value strings exactly. Do not add diagnoses, "
-                    "measurements, commentary, markdown, or other keys.")},
-                {"role": "user", "content": json.dumps([c.model_dump() for c in claims])},
+                {"role": "system", "content": system},
+                {"role": "user", "content": json.dumps(context, ensure_ascii=False)},
             ],
         }
         with httpx.Client(timeout=float(os.getenv("CARDIAC_TIMEOUT", "60")),

@@ -67,10 +67,57 @@ arithmetic, and returns nonzero if explicitly requested Qwen reporting fails.
 Passing this engineering check does not require a trained RWMA classifier.
 See the [clinical collaboration checklist](docs/CLINICAL_CONFIRMATIONS.zh-CN.md).
 
-The first Qwen adapter performs constrained evidence ordering. The model returns
+The baseline Qwen adapter performs constrained evidence ordering. The model returns
 JSON claims with exact evidence IDs and values; deterministic realization produces
 the report. Invalid claims or API errors trigger an explicitly recorded template
-fallback. Free-form clinical interpretation and open-ended QA are future stages.
+fallback. The optional three-role workflow below adds model-written research prose,
+not validated clinical interpretation. Open-ended QA remains a future stage.
+
+## One-round three-role workflow
+
+```text
+ED/ES metadata -> Planner (select sparse flow or area-only)
+ED/ES images -> EchoNet segmentation -> deterministic measurements and QC
+plan + measured evidence -> Analyst (research draft)
+plan + evidence + draft -> Reviewer (final report, limited/refer)
+predicted masks + manual masks -> independent evaluation, after discussion
+```
+
+These are three separate role calls to the same configurable Qwen model, not three
+independently trained models. Each role speaks once. There is no debate loop,
+long-term memory, autonomous model selection or validated RWMA diagnosis.
+Planner's tool choice changes execution; Reviewer can revise the draft and refer
+a case, but cannot alter measurements. Blocking QC always forces referral.
+
+```bash
+conda activate cardiac-agent-gpu
+python scripts/three_role_batch.py \
+  --data data/camus-100 --output runs/three-role-100 \
+  --count 100 --workers 4 --env .env
+```
+
+This downloads the first N alphabetically ordered official CAMUS patients, A4C
+ED/ES only. Four workers overlap downloads/API calls; GPU inference is serialized.
+Every case exports `original/`, `segmentation/` (binary masks and overlays),
+`report.md`, `report.json`, `agent_trace.json`, independent evaluation and SHA256
+checksums. Original PNGs are display conversions; original NIfTI files and download
+provenance remain in the data directory. `index.csv` and `summary.json` summarize
+the batch. Experiment outputs, images and private credentials are not committed.
+
+Only view/phase metadata, computed measurements, QC, and previous role outputs go
+to the API. Patient IDs, raw images, reference masks and reference metrics do not.
+Reports must preserve the exact evidence map; numeric tokens in prose must match
+an evidence value, allowing decimal half-up rounding to the displayed precision.
+This lexical guard does not establish correct units, associations or clinical meaning.
+An immutable limitations section and numerical table accompany model-written prose.
+
+Received role responses are cached with request hashes. Re-running the same command
+verifies completed cases and resumes partial cases without replaying received role
+calls. A started/failed/invalid response is not silently regenerated; it remains a
+visible failure requiring investigation. Transport retries (up to three attempts)
+are logged separately and may repeat a provider request after a network timeout.
+Batch failures produce a nonzero exit status. Keep output directories separate
+when changing prompts, models, code, input data or segmentation configuration.
 
 ## Input contract
 
