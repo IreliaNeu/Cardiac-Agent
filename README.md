@@ -13,19 +13,31 @@ statistics, and writes typed evidence and checksum-verified run artifacts.
 RWMA returns `unavailable` without a trained model and `abstained` on blocking QC.
 There is no fabricated classifier output or FAC-based diagnostic threshold.
 
-Real CAMUS validation covers three patients and six ED/ES pairs with manual masks.
-The official EchoNet checkpoint was evaluated on three A4C pairs (six images):
+The latest ordered CAMUS A4C batch covers **100 ED/ES pairs** with one discussion
+round per case: **100 Planner, 100 Analyst and 100 Reviewer calls**. The delivery
+contains 200 originals, 200 binary predictions, 200 overlays and 100 reports.
+**98 cases completed numerical processing; two empty-mask failures received explicit
+referral reports**, not fabricated measurements. Across all 100 cases, including
+failed predictions: **mean Dice 0.8082, mean IoU 0.7009**. FAC MAE is **9.79 percentage
+points over the 98 measurable cases**. Four cases require review under current QC.
+All plans selected area-only; this batch does not validate the optical-flow branch
+or demonstrate a performance benefit from multi-agent interaction.
+
+Earlier manual-mask validation covered three patients and six ED/ES pairs.
+The official EchoNet checkpoint was initially evaluated on three A4C pairs (six images):
 **mean Dice 0.8509, mean IoU 0.7440, FAC MAE 8.14 percentage points, 0/3 failures**.
 All three predicted-mask cases completed Qwen reporting with exact numerical checks;
 a separate real manual-mask Qwen run also passed.
 
-These are small, ordered cross-dataset pilot results, not a held-out clinical benchmark.
-The largest observed FAC error was 15.22 percentage points. RWMA training, clinical
+These are ordered cross-dataset engineering results, not a held-out clinical benchmark.
+The first three cases were also used during development. The earlier three-case pilot's
+largest FAC error was 15.22 percentage points. RWMA training, clinical
 interpretation, open-ended QA and Web UI remain pending.
 
 Documentation: [Chinese technical guide](docs/TECHNICAL_GUIDE.zh-CN.md),
 [architecture mapping](docs/ARCHITECTURE.zh-CN.md),
-[current progress and results](docs/PROGRESS_2026-09-18.zh-CN.md).
+[three-role design and operation](docs/THREE_ROLE_WORKFLOW.zh-CN.md),
+[current progress and results](docs/PROGRESS_2026-09-27.zh-CN.md).
 
 ## Install and run
 
@@ -118,6 +130,23 @@ visible failure requiring investigation. Transport retries (up to three attempts
 are logged separately and may repeat a provider request after a network timeout.
 Batch failures produce a nonzero exit status. Keep output directories separate
 when changing prompts, models, code, input data or segmentation configuration.
+
+For an empty-mask tool failure that occurred before Analyst/Reviewer, an explicit
+finalization command completes only those two unspoken roles in a separate delivery
+directory. It exports the raw failed predictions and a referral report, never
+substitutes manual masks, and never computes FAC from an empty cavity prediction.
+
+```bash
+python scripts/finalize_failed_cases.py \
+  --source runs/three-role-100 --output runs/three-role-100-delivery \
+  --data data/camus-100 --env .env
+python scripts/audit_three_role_batch.py runs/three-role-100-delivery --count 100
+```
+
+`failed_reported` is not measurement success. Audit `passed` means delivery is
+complete; consult `all_measurements_succeeded` and the original failure denominator
+separately. A diagnostic segmentation re-execution exports the original empty
+prediction, without adding a discussion round. Other failure types require investigation.
 
 ## Input contract
 

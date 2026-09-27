@@ -46,6 +46,7 @@ Planner 的选择实际控制 `pipeline.run(..., deformation=...)`，不是仅�
 | `src/cardiac_agent/roi.py` | 官方 EchoNet DeepLabV3-ResNet50 预测左室心腔 |
 | `src/cardiac_agent/function.py` | 像素面积、FAC、面积比、可选光流统计和 QC |
 | `scripts/three_role_batch.py` | 官方数据下载、固定病例选择、并发批处理、独立评估、索引与汇总 |
+| `scripts/finalize_failed_cases.py` | 在独立交付目录补齐空-mask 失败病例尚未发言的角色，生成失败报告，不计算 FAC |
 | `scripts/audit_three_role_batch.py` | 只读验收：哈希、图像、三次调用、数值、标注隔离、数量与失败分母 |
 | `tests/test_discussion.py` | 单轮限制、断点缓存、参考隔离、QC 覆盖及数值校验测试 |
 
@@ -90,6 +91,26 @@ python scripts/three_role_batch.py \
   --env /root/autodl-tmp/RS-Agent/.env
 python scripts/audit_three_role_batch.py runs/three-role-100-20260927 --count 100
 ```
+
+若出现初始 ROI 阶段的空预测 mask，且 Analyst/Reviewer 尚未调用，可显式执行失败收尾：
+
+```bash
+python scripts/finalize_failed_cases.py \
+  --source runs/three-role-100-20260927 \
+  --output runs/three-role-100-20260927-delivery \
+  --data data/camus-100-20260927 --env /root/autodl-tmp/RS-Agent/.env
+python scripts/audit_three_role_batch.py runs/three-role-100-20260927-delivery --count 100
+```
+
+该分支先验证原始批次校验和并复制到新目录，原始批次不覆盖。诊断性再次执行相同分割模型，
+仅用于保留之前被非空检查拒绝的原始预测，不能换成人工 mask，也不自动更换模型。
+只补充 Analyst 和 Reviewer 各一次，不重新调用 Planner。两角色必须报告工具失败及证据不足，
+不得把空 mask 解释为真实心腔为空，不能计算 FAC。
+
+交付状态 `failed_reported` 表示“失败报告已生成”，不等于测量成功。汇总分别保留原始
+`completed`/`failed`、`reported` 和包含失败预测的 `all_attempts_mean_dice/iou`。
+验收 `passed` 表示文件、轮次与报告交付完整；`all_measurements_succeeded` 独立表示测量是否全部成功。
+需要特别检查这两个字段，不能把前者当作百分之百的有效分析成功率。
 
 API 默认 SiliconFlow `Qwen/Qwen3-30B-A3B-Instruct-2507`，可通过环境变量切换。
 四个线程并发下载和调用 API，GPU 推理使用共享模型及锁串行执行，避免模型重复加载。

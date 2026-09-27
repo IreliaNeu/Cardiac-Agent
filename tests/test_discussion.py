@@ -1,11 +1,15 @@
 import json
+import runpy
 import threading
+from pathlib import Path
 
 import numpy as np
 import pytest
+from PIL import Image
 
 from cardiac_agent.cli import load_study, make_fixture
 from cardiac_agent.discussion import Draft, discuss, validate_report
+from cardiac_agent.pipeline import save_json
 
 
 class Client:
@@ -82,3 +86,60 @@ def test_failed_call_is_not_automatically_replayed(tmp_path):
         with pytest.raises(RuntimeError):
             discuss(study, tmp_path / "result", client, Segmenter(), threading.Lock(), {})
     assert len(client.calls) == 1
+
+
+def test_duplicate_role_keys_rejected_without_regeneration(tmp_path):
+    class Duplicate(Client):
+        def complete(self, system, context):
+            self.calls.append(context)
+            return ('{"motion":"none","motion":"farneback",'
+                    '"focus":"area_only","reason":"research"}')
+
+    client = Duplicate()
+    study = load_study(make_fixture(tmp_path / "fixture"))
+    for _ in range(2):
+        with pytest.raises(ValueError, match="duplicate_json_key"):
+            discuss(study, tmp_path / "result", client, Segmenter(), threading.Lock(), {})
+    assert len(client.calls) == 1
+
+
+def test_changed_image_cannot_reuse_cached_measurements(tmp_path):
+    client = Client()
+    study = load_study(make_fixture(tmp_path / "fixture"))
+    directory = tmp_path / "result"
+    discuss(study, directory, client, Segmenter(), threading.Lock(), {})
+    with Image.open(study.ed_image) as im:
+        changed = np.asarray(im).copy()
+    changed[0, 0] = 123
+    Image.fromarray(changed).save(study.ed_image)
+    with pytest.raises(ValueError, match="cached_execution_changed"):
+        discuss(study, directory, client, Segmenter(), threading.Lock(), {})
+    assert len(client.calls) == 3
+
+
+def test_failure_report_completes_only_unspoken_roles(tmp_path):
+    functions = runpy.run_path(str(Path(__file__).parents[1] / "scripts/finalize_failed_cases.py"))
+    save_json(tmp_path / "planner.json", {
+        "status": "received", "round": 1, "role": "planner", "response": json.dumps({
+            "motion": "none", "focus": "area_only", "reason": "two frames"})})
+    facts = {"ed_mask_nonzero_pixels": "20", "es_mask_nonzero_pixels": "0",
+             "fac_percent": "unavailable"}
+    client = Client()
+    for _ in range(2):
+        functions["failure_report"](tmp_path, facts, client)
+    assert len(client.calls) == 2
+    report = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
+    assert report["status"] == "tool_failed_reported"
+    assert report["effective_verdict"] == "refer"
+    assert report["report"]["evidence"]["fac_percent"] == "unavailable"
+    assert len(json.loads((tmp_path / "agent_trace.json").read_text())) == 3
+
+
+def test_failure_evidence_json_string_decoded_without_changing_values():
+    functions = runpy.run_path(str(Path(__file__).parents[1] / "scripts/finalize_failed_cases.py"))
+    cls = functions["FailureDraft"]
+    facts = {"fac_percent": "unavailable", "es_mask_nonzero_pixels": "0"}
+    draft = cls.model_validate({"evidence": json.dumps(facts), "narrative": "Tool failure."})
+    assert draft.evidence == facts
+    with pytest.raises(ValueError, match="duplicate_json_key"):
+        cls.model_validate({"evidence": '{"x":"0","x":"1"}', "narrative": "failure"})

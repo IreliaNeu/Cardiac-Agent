@@ -5,6 +5,7 @@ from collections import Counter
 from pathlib import Path
 
 import numpy as np
+from finalize_failed_cases import FailureDraft, FailureReview
 from PIL import Image
 
 from cardiac_agent.discussion import Draft, Review, validate_report
@@ -24,19 +25,29 @@ def audit(root, count):
     assert len(results) == count == summary["requested"]
     assert len({r["patient"] for r in results}) == count
     completed = [r for r in results if r["status"] == "completed"]
+    reported = [r for r in results if r["status"] in {"completed", "failed_reported"}]
     assert len(completed) == summary["completed"]
     assert len(completed) + summary["failed"] == count
     roles, attempts, total_tokens = Counter(), Counter(), 0
     concerns, overrides, disagreeing = Counter(), 0, 0
-    for row in completed:
+    for row in reported:
         directory = root / row["patient"]
-        execution = Path(json.loads((directory / "execution.json").read_text())["directory"])
-        packet = MedicalKnowledgePacket.model_validate_json(
-            (execution / "knowledge.json").read_text())
-        facts = {c.evidence_id: c.value for c in evidence_claims(packet)}
-        request = json.loads((execution / "request.json").read_text())
-        assert request["ed_mask"] is None and request["es_mask"] is None
-        assert request["rwma_label"] is None
+        failed = row["status"] == "failed_reported"
+        if failed:
+            diagnostic = directory / "failure_diagnostic"
+            facts = json.loads((diagnostic / "evidence.json").read_text())
+            request = json.loads((diagnostic / "provenance.json").read_text())
+            assert facts["fac_percent"] == "unavailable"
+            assert "0" in (facts["ed_mask_nonzero_pixels"], facts["es_mask_nonzero_pixels"])
+            assert row["fac_absolute_error_pp"] is None
+        else:
+            execution = Path(json.loads((directory / "execution.json").read_text())["directory"])
+            packet = MedicalKnowledgePacket.model_validate_json(
+                (execution / "knowledge.json").read_text())
+            facts = {c.evidence_id: c.value for c in evidence_claims(packet)}
+            request = json.loads((execution / "request.json").read_text())
+            assert request["ed_mask"] is None and request["es_mask"] is None
+            assert request["rwma_label"] is None
         trace = json.loads((directory / "agent_trace.json").read_text(encoding="utf-8"))
         assert [r["role"] for r in trace] == ["planner", "analyst", "reviewer"]
         for role in trace:
@@ -47,13 +58,16 @@ def audit(root, count):
             context = json.dumps(role["request"]["context"])
             for forbidden in (row["patient"], "reference_fac", "reference_mask", '"dice"'):
                 assert forbidden not in context, "Reference/identifier leak"
-        draft = Draft.model_validate_json(trace[1]["response"])
-        review = Review.model_validate_json(trace[2]["response"])
+        draft = (FailureDraft if failed else Draft).model_validate_json(trace[1]["response"])
+        review = (FailureReview if failed else Review).model_validate_json(trace[2]["response"])
         validate_report(draft, facts)
         validate_report(review, facts)
         report = json.loads((directory / "report.json").read_text(encoding="utf-8"))
         assert report["report"] == review.model_dump()
         assert report["rounds"] == 1 and report["role_turns"] == 3
+        if failed:
+            assert report["effective_verdict"] == "refer"
+            assert report["status"] == "tool_failed_reported"
         overrides += int(report["qc_override"])
         disagreeing += int(report["effective_verdict"] != review.verdict)
         concerns.update(report["qc_flags"])
@@ -61,18 +75,23 @@ def audit(root, count):
             original = np.asarray(Image.open(directory / "original" / f"{phase}.png"))
             mask = np.asarray(Image.open(directory / "segmentation" / f"{phase}_mask.png"))
             overlay = np.asarray(Image.open(directory / "segmentation" / f"{phase}_overlay.png"))
-            assert set(np.unique(mask)) == {0, 255}
+            if failed:
+                assert set(np.unique(mask)) <= {0, 255}
+                assert int((mask > 0).sum()) == int(facts[phase.lower()+"_mask_nonzero_pixels"])
+            else:
+                assert set(np.unique(mask)) == {0, 255}
             assert original.shape[:2] == mask.shape == overlay.shape[:2]
             assert original.var() > 0 and overlay.var() > 0
             assert digest(directory / "original" / f"{phase}.png") == digest(
                 Path(request[phase.lower() + "_image"]))
-    return {"requested": count, "completed": len(completed), "passed": len(completed) == count,
+    return {"requested": count, "completed": len(completed), "reported": len(reported),
+            "passed": len(reported) == count, "all_measurements_succeeded": len(completed) == count,
             "verified_files": len(checks), "role_calls": dict(roles),
             "http_attempt_distribution": dict(attempts), "reported_total_tokens": total_tokens,
             "qc_flags": dict(concerns), "qc_forced_referrals": overrides,
             "reviewer_disagreements_overridden": disagreeing,
-            "original_images": len(completed) * 2, "binary_masks": len(completed) * 2,
-            "overlays": len(completed) * 2, "reports": len(completed),
+            "original_images": len(reported) * 2, "binary_masks": len(reported) * 2,
+            "overlays": len(reported) * 2, "reports": len(reported),
             "clinical_correctness_checked": False}
 
 
