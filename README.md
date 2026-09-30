@@ -229,7 +229,7 @@ measurements, RWMA status, knowledge, explanation, evaluation, run status and ha
 Partial failures retain `failure.json`. No automatic clinical benchmark scores
 are inferred from synthetic examples. Preset QA currently checks area reduction,
 RWMA availability and FAC/LVEF distinction. Batch training, calibrated RWMA,
-full-cycle motion, open questions, clinician scoring and Web UI are pending.
+full-cycle motion, open questions, clinician scoring and a live inference Web UI are pending.
 
 The batch evaluator is in `benchmark.py`; per-study stages are orchestrated by
 `pipeline.py`. `camus.py` handles label-preserving medical image import, `roi.py`
@@ -239,6 +239,31 @@ Source evidence uses absolute paths; `cardiac-agent verify` expects the original
 input locations to remain available. FAC and area ratio are algebraically redundant.
 Farneback is sparse image displacement, not myocardial strain. CAMUS masks do not
 provide independent RWMA labels, and systolic dysfunction is a distinct target.
+
+## Offline clinician demonstration
+
+The read-only viewer in `demo/clinical_review/` presents five deliberately selected
+CAMUS examples: a good prediction, a near-median case, an error missed by current
+QC, a QC referral, and an empty-mask failure. This is historical result replay,
+not live inference or a representative clinical sample. Original reports remain
+unchanged; separate editorial notes identify limitations and semantic errors.
+
+Build the Word speaking guide with the optional `documents` dependency:
+
+```bash
+python scripts/build_demo_guide.py docs/DEMO_GUIDE_2026-09-30.zh-CN.md guide.docx
+python scripts/build_clinical_demo.py \
+  --source runs/three-role-100-20260927-delivery \
+  --data data/camus-100-20260927 \
+  --output runs/clinical-demo-new --guide guide.docx
+```
+
+The exporter checks source hashes, confirms references against archived evaluation,
+and requires a fresh output directory. It makes no model or API calls. Open the
+generated `index.html` directly; retain the entire directory for offline use.
+Generated case images and experiment records remain server-side under ignored
+`runs/`; only the viewer template, code and documentation belong in GitHub.
+See the [Chinese speaking guide](docs/DEMO_GUIDE_2026-09-30.zh-CN.md).
 
 ## Provenance
 

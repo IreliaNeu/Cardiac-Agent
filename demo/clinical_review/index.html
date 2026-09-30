@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cardiac-Agent 病例评阅</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><div><h1>Cardiac-Agent 病例评阅</h1><p>CAMUS A4C · 已保存的单轮结果 · 研究演示</p></div>
+<a href="Cardiac-Agent_医工演示讲解稿.docx" download>Word 讲解稿</a></header>
+<main>
+<nav aria-label="病例选择"><label for="case-select">病例</label><select id="case-select"></select>
+<label class="check"><input type="checkbox" id="show-reference" checked>人工标注对照</label></nav>
+<section aria-labelledby="case-title"><div class="title-row"><h2 id="case-title"></h2><span id="status"></span></div>
+<p id="case-purpose"></p><p class="source-note">人工标注仅用于本页对照和独立评估，未输入三角色。limited 不表示临床正常或审核通过。</p>
+<div class="metrics" id="metrics"></div><div id="images"></div></section>
+<section><h2>本例讲解重点</h2><ul id="talking-points"></ul><aside id="editor-note"></aside></section>
+<section class="report-columns"><div><h2>模型最终报告原文</h2><p class="prewrap" id="narrative"></p>
+<h3>Reviewer 关注点</h3><ul id="concerns"></ul><a id="report-link">完整报告 Markdown</a></div>
+<div><h2>数值与独立对照</h2><table><thead><tr><th>指标</th><th>预测</th><th>人工标注派生值</th></tr></thead><tbody id="evidence"></tbody></table>
+<p class="source-note">FAC = 100 × (ED面积 − ES面积) / ED面积；面积比为 ES/ED。误差单位为百分点。均不是 LVEF 或心肌应变。</p>
+<h3>运行状态</h3><p id="qc"></p><p id="limits"></p></div></section>
+<section><h2>三角色单轮记录</h2><div id="roles"></div></section>
+<section><h2>百例结果背景</h2><p id="cohort"></p><p>五例按展示目的选取，不是随机抽样，不用于重估模型性能。没有新增模型推理或 API 调用。</p>
+<p><a href="selection.json">选例规则与来源</a> · <a href="README.md">演示目录说明</a></p></section>
+</main><footer>研究原型，尚未完成临床验证。原文报告可能含语义错误，讲解旁注不修改模型原始输出。</footer>
+<script src="cases.js"></script><script src="app.js"></script></body></html>
