@@ -83,7 +83,8 @@ def build(source, output):
             document.add_heading(line[3:], level=1)
         else:
             document.add_paragraph(line)
-    document.core_properties.title = "Cardiac Agent 医工合作演示讲解稿"
+    document.core_properties.title = next(
+        line[2:].strip() for line in lines if line.startswith("# "))
     document.core_properties.author = "Cardiac-Agent 项目组"
     output.parent.mkdir(parents=True, exist_ok=True)
     document.save(output)

@@ -248,7 +248,7 @@ QC, a QC referral, and an empty-mask failure. This is historical result replay,
 not live inference or a representative clinical sample. Original reports remain
 unchanged; separate editorial notes identify limitations and semantic errors.
 
-Build the Word speaking guide with the optional `documents` dependency:
+Build the formal Word technical report with the optional `documents` dependency:
 
 ```bash
 python scripts/build_demo_guide.py docs/DEMO_GUIDE_2026-09-30.zh-CN.md guide.docx
@@ -263,7 +263,10 @@ and requires a fresh output directory. It makes no model or API calls. Open the
 generated `index.html` directly; retain the entire directory for offline use.
 Generated case images and experiment records remain server-side under ignored
 `runs/`; only the viewer template, code and documentation belong in GitHub.
-See the [Chinese speaking guide](docs/DEMO_GUIDE_2026-09-30.zh-CN.md).
+See the [Chinese technical report source](docs/DEMO_GUIDE_2026-09-30.zh-CN.md)
+and [editable Word report](docs/Cardiac-Agent_项目技术报告.docx).
+The older speaking guide is retained as a historical artifact in the sealed demo
+bundle; the technical report is the current document for external review.
 
 ## Provenance
 
